@@ -1,0 +1,586 @@
+\documentclass[12pt]{article}
+
+\usepackage[letterpaper, hmargin=0.75in, vmargin=0.75in]{geometry}
+\usepackage{float}
+
+\pagestyle{empty}
+
+\title{ECE 459: Programming for Performance\\Assignment 1}
+\author{Yang Yongren}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Parallelization}
+The table shows the original program without multi-threading
+
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{ |c|c|c|c|c|c| }\hline
+1.txt & 10.txt & 50.txt & 100.txt & 500.txt & 1000.txt \\ 
+ \hline 
+\begin{tabular}{@{}ll@{}} real & 0.019s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} real & 0.220s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} real & 0.950s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} real & 0.975s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} real & 8.190s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} real & 10.321s \end{tabular}  
+ \\ 
+ \begin{tabular}{@{}ll@{}} user & 0.004s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} user & 0.206s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} user & 0.941s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} user & 0.792s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} user & 8.130s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} user & 10.295s \end{tabular}  
+ \\ 
+ \begin{tabular}{@{}ll@{}} sys & 0.003s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} sys & 0.004s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} sys & 0.000s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} sys & 0.004s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} sys & 0.005s \end{tabular}  
+ \\ 
+ \hline 
+\end{tabular}
+\end{center}
+\end{table}
+
+
+\newpage 
+
+\subsection{Strategy 1}
+The table shows performance of strategy 1, one thread per puzzle.
+The performance benefit of this approach is that it can compeletly parallelize every puzzle, 
+each thread is responsible for its own puzzle's read, write and solve, so puzzles are being processed at the same time. 
+Theoretically speaking, if the number of puzzle is smaller than the number of thread, it only needs time of one puzzle to finish the job, 
+if the number of puzzle is greater than the number of thread, time is ceiling(number of puzzle/number of threads). 
+As we can see from the table, compare to the original data, as the number of puzzles increases, 
+the per formance inprovement is more obvious, and as the number of threads increases, the performance also improves significantly.
+
+To implement this, I open a new file pointer in each thread, and then seek to the location of the puzzle it responsible for, 
+which achive the parallel read. Then write the unsolved puzzle into a temp buffer and use sove function to solve it and write to a temp buffer. 
+The last step is to write the solved buffer into the output file.
+
+One of the difficulty is that in order to write correct output to a file, a lock must be used to lock the output file pointer, 
+which serialize the writing process. The performance is not improved when the number of puzzle is very small, 
+this is because multi-thread needs time to cread and join thread and manipulate the file pointer, which consumes time.
+So the performance is obviously improved only the number of puzzle is large, and the percentage of the initialize time is small.  
+The program has no memory leak or race condition.
+
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{ |c|c|c|c|c|c| }\hline
+Thread & 3 & 4 & 16 & 32\\ 
+ \hline
+1.txt  & \begin{tabular}{@{}ll@{}} real & 0.021s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.016s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.017s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.018s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.011s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.003s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.009s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.005s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.011s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.013s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.000s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.004s \end{tabular}  
+ \\ 
+ \hline 
+10.txt  & \begin{tabular}{@{}ll@{}} real & 0.183s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.259s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.249s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.149s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.219s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.464s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.503s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.298s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.011s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.000s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.000s \end{tabular}  
+ \\ 
+ \hline 
+50.txt  & \begin{tabular}{@{}ll@{}} real & 0.439s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.555s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.543s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.486s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 1.208s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.781s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.413s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.937s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.000s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.035s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.009s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ \\ 
+ \hline 
+100.txt  & \begin{tabular}{@{}ll@{}} real & 0.464s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.330s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.331s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.306s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 1.277s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.317s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.955s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.845s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.016s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.004s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.004s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.016s \end{tabular}  
+ \\ 
+ \hline 
+500.txt  & \begin{tabular}{@{}ll@{}} real & 3.424s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 2.297s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 2.652s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 2.492s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 13.233s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 13.444s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 8.655s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 8.713s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.020s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.040s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ \\ 
+ \hline 
+1000.txt  & \begin{tabular}{@{}ll@{}} real & 4.870s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 3.195s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 2.561s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 2.494s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 17.636s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 17.934s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 11.904s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 11.893s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.012s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.020s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.033s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.020s \end{tabular}  
+ \\ 
+ \hline 
+\end{tabular}
+\end{center}
+\end{table}
+
+
+\newpage 
+\subsection{Strategy 2}
+The table shows performance of strategy 2, workers threads.
+The performance benefit of this approach is that if the number of each worker is properly divided, 
+and if there are enough number of workers, it only needs time of one puzzle to finish the job, 
+for example, solving consumes more time than reading the puzzle from file or writing the puzzle to file,
+so I create more solving workers, after the reading worker finish 1 puzzle, solving workers can start, 
+and writing workers can start after 1 puzzle is solved.
+
+To implement this, I use 2 stacks to store the unsolved puzzle and solved puzzle respectively, 
+each reading worker open a new file pointer, 
+and then seek to the location of the puzzle it responsible for, and then push the unsolved puzzle
+into the stack. The solving worker will keep popping the unsolved puzzle from the stack,
+then solve it and push it into the stack that stores solved puzzle. 
+The writing worker will keep popping the solved puzzle from the stack,
+then write it to a file.  
+
+One of the difficulty is still a lock must be used to lock the output file pointer, 
+which serialize the writing process. 
+The performance is better than the default program but worse than the strategy 1, 
+when different workers are working together, they must share one same stack pointer to keep track of the first element,
+the lock and push and pop action will cost some time. Also, when there are only 3 threads, 
+it will act like default program without multi-threading or even worse because of the extra action.
+If the thread is not properly divided, some workers will wait for other workers, 
+that also makes it slower than strategy 1.
+The program has no memory leak or race condition.
+
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{ |c|c|c|c|c|c| }\hline
+Thread & 3 & 4 & 16 & 32\\ 
+\hline
+1.txt  & \begin{tabular}{@{}ll@{}} real & 0.016s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.010s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.017s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.022s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.016s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.008s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.003s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.003s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.011s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.009s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.000s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.006s \end{tabular}  
+ \\ 
+ \hline 
+10.txt  & \begin{tabular}{@{}ll@{}} real & 0.190s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.216s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.160s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.162s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.293s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.280s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.198s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.186s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.017s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.013s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.000s \end{tabular}  
+ \\ 
+ \hline 
+50.txt  & \begin{tabular}{@{}ll@{}} real & 0.934s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.934s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.551s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.504s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 1.401s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.233s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.940s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.942s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.059s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.029s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.016s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ \\ 
+ \hline 
+100.txt  & \begin{tabular}{@{}ll@{}} real & 0.868s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.832s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.337s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.335s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 1.396s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.414s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.838s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.871s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.033s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.004s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.016s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.025s \end{tabular}  
+ \\ 
+ \hline 
+500.txt  & \begin{tabular}{@{}ll@{}} real & 8.556s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 8.499s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 2.710s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 2.597s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 14.193s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 12.897s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 8.813s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 8.772s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.501s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.236s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.178s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.179s \end{tabular}  
+ \\ 
+ \hline 
+1000.txt  & \begin{tabular}{@{}ll@{}} real & 10.984s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 10.967s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 3.370s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 2.896s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 19.009s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 17.312s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 11.536s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 11.330s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 1.117s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.552s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.432s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.349s \end{tabular}  
+ \\ 
+ \hline 
+\end{tabular}
+\end{center}
+\end{table}
+
+\newpage
+\subsection{Strategy 3} 
+The table shows performance of strategy 3, multiple initial solution threads.
+The performance benefit of this approach is that it can improve the speed of puzzle solving with 
+large amount of threads.
+To implement this, I assigned each thread a different initial value and try to solve with this value,
+if the puzzle cannot be solved, it will act like default program, 
+loop all the possible value in each empty space. To make sure the program runs properly, I make a new
+copy of puzzle every time a new thread is created. 
+The performance is better than default program most of time, but is worst in all three strategies.
+This is because that read and write process are completely serialized, 
+and even many threads are trying to solve puzzle at the same time, 
+it is still one puzzle being solved at a time, each puzzle can be solved faster if there are enough threads,
+however, the whole improvment is still not very obvious.  
+Sometimes, the performance is even worse than the single thread program, this is because when
+the number of thread is less than 9, there is possibility that all the initial value are wrong, 
+then the program will simply run like single thread program, plus extra thread creating and puzzle coping time.
+Also, if the number of puzzle is too small, the percentage of thread creating and puzzle coping time will be large,
+can cause the performance worse than the default program.
+
+The program has no memory leak or race condition.
+
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{ |c|c|c|c|c|c| }\hline
+Thread & 3 & 4 & 16 & 32\\ 
+\hline
+1.txt  & \begin{tabular}{@{}ll@{}} real & 0.016s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.011s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.015s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.015s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.013s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.009s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.000s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.005s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.006s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.003s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.004s \end{tabular}  
+ \\ 
+ \hline 
+10.txt  & \begin{tabular}{@{}ll@{}} real & 0.169s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.173s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.177s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.189s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.848s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.787s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.338s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.335s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.004s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.016s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.000s \end{tabular}  
+ \\ 
+ \hline 
+50.txt  & \begin{tabular}{@{}ll@{}} real & 0.983s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.991s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.484s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.533s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 2.659s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.930s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.188s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.105s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.047s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.028s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ \\ 
+ \hline 
+100.txt  & \begin{tabular}{@{}ll@{}} real & 0.976s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.887s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.538s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.577s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 2.298s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.882s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.180s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 1.041s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.101s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.048s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.008s \end{tabular}  
+ \\ 
+ \hline 
+500.txt  & \begin{tabular}{@{}ll@{}} real & 8.760s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 8.565s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 3.324s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 3.500s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 18.178s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 15.073s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 13.174s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 11.524s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.487s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.260s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.048s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.024s \end{tabular}  
+ \\ 
+ \hline 
+1000.txt  & \begin{tabular}{@{}ll@{}} real & 11.738s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 10.804s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 4.661s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 5.218s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 24.963s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 19.645s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 17.066s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 15.895s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.898s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.580s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.140s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.052s \end{tabular}  
+ \\ 
+ \hline 
+\end{tabular}
+\end{center}
+\end{table}
+
+\newpage 
+
+\section{I/O}
+The table shows the original program without multi-threading
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{ |c|c|c|c|c|c| }\hline
+1.txt & 10.txt & 50.txt & 100.txt & 500.txt & 1000.txt \\ 
+ \hline 
+\begin{tabular}{@{}ll@{}} real & 0.085s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} real & 0.572s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} real & 2.807s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} real & 5.606s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} real & 27.980s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} real & 55.785s \end{tabular}  
+ \\ 
+ \begin{tabular}{@{}ll@{}} user & 0.015s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} user & 0.000s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} user & 0.026s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} user & 0.058s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} user & 0.238s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} user & 0.389s \end{tabular}  
+ \\ 
+ \begin{tabular}{@{}ll@{}} sys & 0.011s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} sys & 0.016s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} sys & 0.030s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} sys & 0.047s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} sys & 0.280s \end{tabular}  
+&\begin{tabular}{@{}ll@{}} sys & 0.384s \end{tabular}  
+ \\ 
+ \hline 
+\end{tabular}
+\end{center}
+\end{table}
+
+\newpage 
+\subsection{multi-threading IO}
+Then I modified the verifier tool to do nonblocking I/O. 
+The table shows the performance of multi-curl.
+The performance is greatly improved as the number of threads and the number of input increases.
+This is because I assign each eh handler a puzzle and use the multiPerform api.
+The program will keep checking if any eh is finished and replace a new one with puzzle.
+
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{ |c|c|c|c|c|c| }\hline
+Thread & 3 & 4 & 16 & 32\\ 
+\hline
+1.txt  & \begin{tabular}{@{}ll@{}} real & 0.075s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.068s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.083s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.083s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.011s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.012s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.007s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.007s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.016s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.015s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.002s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.012s \end{tabular}  
+ \\ 
+ \hline 
+10.txt  & \begin{tabular}{@{}ll@{}} real & 0.168s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.118s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.064s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.065s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.006s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.007s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.006s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.000s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.005s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.003s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.005s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.010s \end{tabular}  
+ \\ 
+ \hline 
+50.txt  & \begin{tabular}{@{}ll@{}} real & 1.076s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.629s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.220s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.150s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.033s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.000s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.019s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.019s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.027s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.017s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.000s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.005s \end{tabular}  
+ \\ 
+ \hline 
+100.txt  & \begin{tabular}{@{}ll@{}} real & 1.959s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 1.304s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.376s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.219s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.017s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.020s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.019s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.042s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.004s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.010s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.011s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.011s \end{tabular}  
+ \\ 
+ \hline 
+500.txt  & \begin{tabular}{@{}ll@{}} real & 8.554s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 6.439s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 1.676s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 0.856s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.148s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.109s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.085s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.111s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.074s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.069s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.034s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.048s \end{tabular}  
+ \\ 
+ \hline 
+1000.txt  & \begin{tabular}{@{}ll@{}} real & 17.248s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 12.807s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 3.263s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} real & 1.683s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} user & 0.226s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.247s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.161s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} user & 0.209s \end{tabular}  
+ \\ 
+  & \begin{tabular}{@{}ll@{}} sys & 0.173s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.147s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.075s \end{tabular}  
+ & \begin{tabular}{@{}ll@{}} sys & 0.089s \end{tabular}  
+ \\ 
+ \hline 
+\end{tabular}
+\end{center}
+\end{table}
+
+\end{document}
+

@@ -1,0 +1,112 @@
+\documentclass[12pt]{article}
+
+\usepackage[letterpaper, hmargin=0.75in, vmargin=0.75in]{geometry}
+\usepackage{float}
+\usepackage{listings}
+
+\pagestyle{empty}
+
+\title{ECE 459: Programming for Performance\\Assignment 3}
+\author{Yongren Yang}
+\date{\today}
+
+
+% Code listing style
+\lstset{frame=single}
+
+\begin{document}
+
+\maketitle
+
+{\bf I verify I ran all benchmarks on a ecetesla0 server.
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{lr}
+    & {\bf Time (s)} \\
+    \hline
+    Length = 4 & 3.666 \\
+    Length = 5 & 121.680 \\
+    Length = 6 & more than 1 hour \\
+  \end{tabular}
+  \caption{Average JWT execution benchmark Sequential}
+  \label{tbl-zeta-openmp}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{lr}
+    & {\bf Time (s)} \\
+    \hline
+    Length = 4 & 0.429 \\
+    Length = 5 & 8.391 \\
+    Length = 6 & 350.475 \\
+  \end{tabular}
+  \caption{Average JWT execution benchmark with OpenMP}
+  \label{tbl-zeta-openmp}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{lr}
+    & {\bf Time (s)} \\
+    \hline
+    Length = 4 & 1.067 \\
+    Length = 5 & 14.160 \\
+    Length = 6 & 293.053 \\
+  \end{tabular}
+  \caption{Average JWT execution benchmark with OpenCL}
+  \label{tbl-zeta-openmp}
+\end{table}
+
+{\bf For the OpenCL version of JWT cracker, I use 1-D array of numbers to represent all the secret possibilities, since every spot has 37 possibilities (36 characters plus empty), the number of possibilities is 37 to the power of secret length. I use number from 0 to the number of possibilities, and map each to the 37 based secret-length-digit number. The 1-D answer now can be divided and assign to different work groups, each group can have (37 to the power of secret length)/work-groups work items. Once a work group find the answer, it will set global found flag to 1 and all work groups will stop and the program will return. OpenCL improve the performance greatly, and better with larger secret length.
+
+
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{lr}
+    & {\bf Time (s)} \\
+    \hline
+    basic & 0.0021 \\
+    netzero4 & 0.0026 \\
+    s42-50 & 0.0154 \\
+    4000-input & 62.071 \\
+  \end{tabular}
+  \caption{Average Coulomb's Law execution benchmark Sequential}
+  \label{tbl-zeta-openmp}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{lr}
+    & {\bf Time (s)} \\
+    \hline
+    basic & 0.1572 \\
+    netzero4 & 0.1601 \\
+    s42-50 & 5.593 \\
+    4000-input & 13.356 \\
+  \end{tabular}
+  \caption{Average Coulomb's Law execution benchmark OpenMP}
+  \label{tbl-zeta-openmp}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{lr}
+    & {\bf Time (s)} \\
+    \hline
+    basic & 0.4848 \\
+    netzero4 & 0.2973 \\
+    s42-50 & 1.150 \\
+    4000-input & 2.525 \\
+  \end{tabular}
+  \caption{Average Coulomb's Law execution benchmark OpenCL}
+  \label{tbl-zeta-openmp}
+\end{table}
+
+{\bf For the OpenCL version of Coulomb's Law, I use kernel functions to replace computeForces(), computeApproxPositions(), computeBetterPositions() and isErrorAcceptable(). So each worker can work on its own task based on its global id, which parallize the for loop in the sequential version. For short input, the overhead of OpenCL is very big, so the performance is also the slowest, when the input is large, the performance is very good.
+
+\end{document}
+
+
